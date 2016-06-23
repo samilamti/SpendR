@@ -1,0 +1,203 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no">
+    <meta name="application-name" content="SpendR" />
+    <meta http-equiv="expires" content="1" />
+    <meta http-equiv="cache-control" content="private" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SpendR</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <style type="text/css">
+        .touchControl {
+            min-width: 44pt;
+            height: 44pt;
+            cursor: pointer;
+            margin: 11pt;
+        }
+        #statusbar {
+            bottom: 10px;
+            background-color: #eee;
+            color: navy;
+            height: 22pt;
+            padding: 4pt;
+        }
+        #statusbar button {
+            margin: -4pt;
+        }
+        #applicationMode {
+            border: none;
+            margin: 8pt;
+        }
+    </style>
+</head>
+<body class="container text-center">
+    <h2> SpendR </h2>
+    <div id="vals">
+        <button data-base="1" data-val="1"> $1 </button>
+        <button data-base="2" data-val="2"> $2 </button>
+        <button data-base="3" data-val="3"> $3 </button>
+        <button data-base="4" data-val="4"> $4 </button>
+        <button data-base="5" data-val="5"> $5 </button>
+        <button data-base="10" data-val="10"> $10 </button>
+        <button data-base="20" data-val="20"> $20 </button>
+        <button data-base="50" data-val="50"> $50 </button>
+        <button data-base="100" data-val="100"> $100 </button>
+    </div>
+
+    <div id="statusbar">
+        <div class="row">
+            <div class="col-xs-2">
+                <div class="dropdown inline dropup" id="availableCurrencies">
+                    <button id="dropdownMenu1" class="btn btn-small btn-info dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        <span id="dropDownMenu1Text" class="glyphicon glyphicon-cog"></span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                        <li><a href="#" class="val" data-val="SEK">SEK</a></li>
+                        <li><a href="#" class="val" data-val="NOK">NOK</a></li>
+                        <li><a href="#" class="val" data-val="DKK">DKK</a></li>
+                        <li><a href="#" class="val" data-val="USD">USD</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a href="#" id="applicationMode">Set spending limit</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-xs-8">
+                <span id="statusbar-text"></span>
+            </div>
+            <div class="col-xs-2">
+                <button class="btn btn-small btn-danger inline" id="clearButton">
+                    <span class="glyphicon glyphicon-trash"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <!-- Spender bottom -->
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-1070638382898604"
+         data-ad-slot="4186152762"
+         data-ad-format="auto"></ins>
+    <script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+    <script>
+        $(function () {
+            var defaultLimit = 0;
+            var buttons = $("#vals button");
+            var status = $("#statusbar-text");
+            buttons
+                .addClass("btn touchControl")
+                .click(function () {
+                    if (mode() === "add")
+                        runningTotal(runningTotal() + parseInt(this.dataset.val));
+                    else
+                        remainingBalance(remainingBalance() - parseInt(this.dataset.val));
+                });
+
+            $("#clearButton")
+                .click(function () {
+                    runningTotal(0);
+                    remainingBalance("reset");
+                });
+
+            $("#availableCurrencies a.val").click(function () {
+                currency(this.dataset.val);
+                updateStatusBar();
+            });
+            $("#applicationMode").click(function () {
+                if (mode() === "add") {
+                    var limit = prompt("Spending limit (numbers only)", currency() === "USD" ? "100" : "1000");
+                    if (!limit) return;
+                    remainingBalance(limit);
+                    defaultLimit = limit;
+                    mode("subtract");
+                }
+                else {
+                    mode("add");
+                }
+            });
+
+            function runningTotal(val) {
+                if (val === undefined) {
+                    return parseInt(localStorage.getItem("runningTotal"));
+                }
+                if (val === "init")
+                    val = parseInt(localStorage.getItem("runningTotal")) || 0;
+                localStorage.setItem("runningTotal", val);
+                updateStatusBar();
+            }
+
+            function updateStatusBar(calculationMode) {
+                calculationMode = calculationMode || mode();
+                if (calculationMode === "add")
+                    status.text("Running total: " + runningTotal() + " " + currency());
+                else
+                    status.text("Balance: " + remainingBalance() + " " + currency());
+            }
+
+            function remainingBalance(val) {
+                if (val === undefined) return parseInt(localStorage.getItem("remainingBalance"));
+                if (val === "init") val = localStorage.getItem("remainingBalance") || (currency() === "USD" ? 100 : 1000);
+                if (val === "reset") val = defaultLimit;
+                localStorage.setItem("remainingBalance", val);
+                updateStatusBar();
+            }
+
+            function currency(val) {
+                if (val === undefined) {
+                    return localStorage.getItem("selectedCurrency");
+                }
+                if (val === "init")
+                    val = localStorage.getItem("selectedCurrency") || "USD";
+                localStorage.setItem("selectedCurrency", val);
+
+                if (val === "SEK" || val === "NOK" || val === "DKK") {
+                    buttons.each(function () {
+                        this.dataset.val = this.dataset.base * 10;
+                    });
+                }
+                else {
+                    buttons.each(function () {
+                        this.dataset.val = this.dataset.base;
+                    });
+                }
+                buttons.each(function () {
+                    this.textContent = this.dataset.val;
+                });
+            }
+
+            function mode(val) {
+                if (val === undefined) {
+                    return localStorage.getItem("calculationMode");
+                }
+                if (val === "init") {
+                    val = localStorage.getItem("calculationMode") || "add";
+                }
+                localStorage.setItem("calculationMode", val);
+                updateStatusBar();
+                $("#applicationMode").text(val === "add" ? "Set spending limit" : "Track running total");
+            }
+
+            currency("init");
+            mode("init");
+            runningTotal("init");
+            remainingBalance("init");
+        });
+    </script>
+</body>
+</html>
